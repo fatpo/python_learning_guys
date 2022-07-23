@@ -21,10 +21,16 @@ def get_db_from_code(code):
         'db3': ['06', '07', '08', '09']
     }
 
-    for k, v in DATABASE_CODE_DICT.items():
-        for _code in v:
+    for k, v in DATABASE_CODE_DICT.items():  # 字典的遍历
+        # k 是？ v 是？
+        # k: db1, v: ['01', '02']
+        # k: db2, v: ['03', '04', '05']
+        # k: db3, v: ['06', '07', '08', '09']
+
+        for _code in v:  # 列表的遍历，遍历  ['03', '04', '05']这个列表
             if code == _code:
                 return k
+    return None
 
 
 # 构造请求头
@@ -43,7 +49,7 @@ def query():
     global db
 
     # 参数校验
-    data = request.json
+    data = request.json  # dict
 
     # app.logger 是 flask 框架自带的日志处理，你可以直接用 app.logger.info("xx"), app.logger.error("mm"), app.logger.debug("yy")
     app.logger.error("请求参数:%s" % json.dumps(data))
@@ -65,19 +71,26 @@ def query():
 
 def step0(param1):
     app.logger.error("######################### step0 #########################")
+    # 组建一个 sql
     sql = f""" select * from table_1 where param1 = '{param1}'"""
+
+    # 去数据库拿这个 sql 的结果
     res = getDBData(sql)
+
+    # 如果没有结果，就直接返回某句话：状态停效
     if not isHasResult(res):
         return warpReturnMsg("状态停效。")
 
-    pol_sts = res['rows'][0]['POL_STS']
-    if pol_sts == 'A':
-        return warpReturnMsg("自垫有效状态了。")
+    # 能走到这一步，说明是有结果的，判断结果的某个状态是不是 A
+    sts = res['rows'][0]['STS']
+    if sts == 'A':
+        return warpReturnMsg("有效状态了。")
 
-    if pol_sts in ['I', 'L']:
+    # 能走到这一步，说明是有结果的，判断结果的某个状态是不是 I, L
+    if sts in ['I', 'L']:
         return step1(param1)
     else:
-        return warpReturnMsg(f"小安无法查到保单没自垫原因，请报IT应用系统问题咨询。")
+        return warpReturnMsg(f"原因不明，请报IT应用系统问题咨询。")
 
 
 def step1(param1):
@@ -85,6 +98,8 @@ def step1(param1):
     sql = f"""select * from table_2 where param1 = '{param1}'"""
     res = getDBData(sql)
     if isHasResult(res):
+        # app.logger.error("有数据，订单有效。")
+        # return json.dumps({'message':"有数据，订单有效。"})
         return warpReturnMsg("有数据，订单有效。")
     else:
         return warpReturnMsg("没数据，订单无效。")
@@ -124,9 +139,10 @@ def getDBData(sql):
     :param sql:
     :return:
     """
-    params = dict()
-    params['db'] = db
-    params['sql'] = sql
+    params = dict()  # 初始化一个字典，和 my_list = list() 初始化一个列表 一样的
+    params['db'] = db  # 放键值对 "db"=db2
+    params['sql'] = sql  # 放键值对 "sql"="select xxx"
+
     res = requests.post(url=database_api_url, headers=headers, json=params)
     if res:
         app.logger.error("db content:%s" % res.content)
